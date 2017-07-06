@@ -1,16 +1,15 @@
 package com.m800.actorsystems.logprocessor.actors;
 
 /**
- * 
  * FileScanner
- * 
+ * <p>
  * This class is an Actor
  * Which scans a predefined
  * directory for files
- * and creates Actors to 
+ * and creates Actors to
  * process those files.
- *
- *
+ * <p>
+ * <p>
  * The FileScanner creates
  * a different FileParser
  * for each file
@@ -18,7 +17,6 @@ package com.m800.actorsystems.logprocessor.actors;
  * Many files may be read
  * and processed
  * concurrently.
- *
  **/
 
 import akka.actor.AbstractActor;
@@ -43,51 +41,46 @@ import java.util.UUID;
 
 public class FileScanner extends AbstractActor {
 
-  protected final LoggingAdapter log = Logging.getLogger( context( ).system( ), this );
-  protected final Map<Parse,ActorRef> fileParserRefs = new HashMap<Parse,ActorRef>( );
-  protected final Path logDirectory;
+    protected final LoggingAdapter log = Logging.getLogger(context().system(), this);
+    protected final Map<Parse, ActorRef> fileParserRefs = new HashMap<Parse, ActorRef>();
 
-  private FileScanner( String logDirectoryName ) {
+    private FileScanner() {
 
-    this.logDirectory = Paths.get( logDirectoryName ).toAbsolutePath( );
+        receive(
+                ReceiveBuilder.
+                        match(Scan.class, message -> this.handle(message)).
+                        matchAny(o -> log.info("FileScanner does not understand this message {}", o)).
+                        build()
+        );
 
-    log.info( "Log directory : {} ", this.logDirectory );
+    }
 
-    receive( 
-      ReceiveBuilder.
-        match( Scan.class, message -> this.handle( message ) ).
-        matchAny( o -> log.info( "FileScanner does not understand this message {}", o ) ).
-        build( )
-    );
+    private void handle(Scan message) throws IOException {
+        log.info("FileScanner received Scan message: {}", message);
+        Path logDirectory = Paths.get(message.dir).toAbsolutePath();
+        log.info("Log directory : {} ", logDirectory);
 
-  }
+        Files.list(logDirectory)
+                .filter(Files::isRegularFile)
+                .forEach(filePath -> this.startNewLineAggregatorFor(filePath));
 
-  private void handle( Scan message ) throws IOException {
+    }
 
-    log.info( "FileScanner received Scan message: {}", message );
+    private void startNewLineAggregatorFor(Path filePath) {
 
+        log.info("File scanner sees this file {} and will make a parser for it...", filePath);
 
-    Files.list( this.logDirectory )
-      .filter( Files::isRegularFile )
-      .forEach( filePath -> this.startNewLineAggregatorFor( filePath ) );
+        ActorRef fileParserRef = getContext().actorOf(
+                Props.create(FileParser.class), "file-parser-" + UUID.randomUUID()
+        );
 
-  }
+        Parse parseMessage = new Parse(filePath);
 
-  private void startNewLineAggregatorFor( Path filePath ) {
+        fileParserRef.tell(parseMessage, null);
 
-    log.info( "File scanner sees this file {} and will make a parser for it...", filePath );
+        this.fileParserRefs.put(parseMessage, fileParserRef);
 
-    ActorRef fileParserRef = getContext( ).actorOf(
-        Props.create( FileParser.class ), "file-parser-" + UUID.randomUUID( )
-      );
-
-    Parse parseMessage = new Parse( filePath );
-
-    fileParserRef.tell( parseMessage, null );
-
-    this.fileParserRefs.put( parseMessage, fileParserRef );
-
-  }
+    }
 
 }
 

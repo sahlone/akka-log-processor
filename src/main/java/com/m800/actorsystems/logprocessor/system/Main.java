@@ -29,8 +29,8 @@ public class Main {
 
 
       ActorSystem system = ActorSystem.create( "log-processor" );
-      ActorRef fileScannerActor = system.actorOf( Props.create( FileScanner.class, logDir ), "file-scanner" );
-      fileScannerActor.tell( new Scan( ), null );
+      ActorRef fileScannerActor = system.actorOf( Props.create( FileScanner.class ), "file-scanner" );
+      fileScannerActor.tell( new Scan(logDir ), null );
 
   }
 

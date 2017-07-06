@@ -25,8 +25,8 @@ import com.m800.actorsystems.logprocessor.events.EndOfFile;
 public class Aggregator extends AbstractActor {
 
     protected final LoggingAdapter log = Logging.getLogger(context().system(), this);
-    protected final Path fileToAggregate;
-    private int noOfWords = 0;
+    public final Path fileToAggregate;
+    public int noOfWords = 0;
 
     private String DELIMITER = " ";
 
@@ -86,11 +86,11 @@ public class Aggregator extends AbstractActor {
     }
 
     private void outputLineCount(EndOfFile event) {
-
-        System.console().writer().println("File " + event.targetFile + " has " + noOfWords + " words");
-        System.console().writer().flush();
-
-
+        log.info("File " + event.targetFile + " has " + noOfWords + " words");
+        if(null!=System.console()){
+            System.console().writer().println("File " + event.targetFile + " has " + noOfWords + " words");
+            System.console().writer().flush();
+        }
     }
 
 }
